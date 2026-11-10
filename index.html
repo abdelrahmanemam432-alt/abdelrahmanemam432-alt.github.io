@@ -118,10 +118,63 @@ h1.title{font-size:clamp(34px,5vw,64px);letter-spacing:-.035em;font-weight:600;l
 .tile,.pcard,.panel,.t-side>*{box-shadow:0 0 70px -18px rgba(var(--red),var(--glowB)),0 0 0 1px rgba(var(--red),.10)}
 .t-side{box-shadow:none}
 a.tile:hover,.pcard:hover{box-shadow:0 0 90px -12px rgba(var(--red),calc(var(--glowB) + .12)),0 0 0 1px rgba(var(--red),.28)}
+
+/* ================= MOTION ================= */
+:root{--ease:cubic-bezier(.2,.75,.2,1)}
+/* name: letters rise from behind the cards */
+.name .ch{display:inline-block;animation:letterIn 1.1s var(--ease) backwards;animation-delay:calc(var(--c) * 50ms + 150ms)}
+.name .ch.sp{width:.26em}
+@keyframes letterIn{from{transform:translateY(95%);opacity:0;filter:blur(10px)}to{transform:none;opacity:1;filter:blur(0)}}
+/* top bar */
+.top{animation:fadeDown .9s var(--ease) .1s backwards}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+/* cards stagger in */
+.bento .tile{animation:cardIn 1s var(--ease) backwards;animation-delay:calc(var(--i,0) * 110ms + 450ms)}
+.bento .tile:nth-child(2){--i:1}.bento .tile:nth-child(3){--i:2}.bento .tile:nth-child(4){--i:3}.bento .tile:nth-child(5){--i:4}
+@keyframes cardIn{from{opacity:0;transform:translateY(60px) scale(.96)}to{opacity:1;transform:none}}
+/* views fade/slide when you navigate */
+.view{animation:viewIn .8s var(--ease) backwards}
+@keyframes viewIn{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+.big,.lede{animation:rise 1s var(--ease) .1s backwards}
+@keyframes rise{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:none}}
+/* hover life */
+a.tile{transition:background .3s,transform .5s var(--ease),box-shadow .5s}
+a.tile:hover{transform:translateY(-6px)}
+.tile .label svg{transition:transform .4s var(--ease)}
+a.tile:hover .label svg{transform:translate(5px,-5px)}
+.photo img{transition:transform 1.2s var(--ease)}
+.t-photo:hover .photo img{transform:scale(1.05)}
+.app{transition:transform .45s cubic-bezier(.3,1.6,.5,1)}
+.app:hover{transform:translateY(-8px) rotate(-7deg) scale(1.08)}
+.stack .app{animation:bob 4.5s ease-in-out infinite}
+.stack .app:nth-child(2){animation-delay:-.9s}.stack .app:nth-child(3){animation-delay:-1.8s}.stack .app:nth-child(4){animation-delay:-2.7s}.stack .app:nth-child(5){animation-delay:-3.6s}
+@keyframes bob{50%{translate:0 -6px}}
+.pcard{transition:transform .6s var(--ease),box-shadow .5s}
+.pcard:hover{transform:translateY(-8px)}
+.job{transition:padding .4s var(--ease)}
+.job:hover{padding-left:14px}
+.clist a{transition:padding .4s var(--ease),opacity .3s}
+.clist a:hover{padding-left:16px}
+/* scroll reveal */
+.reveal{opacity:0;transform:translateY(48px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.pcard.reveal.in:hover{transform:translateY(-8px)}
+/* breathing red glow + mouse spotlight */
+.page::before{animation:breathe 9s ease-in-out infinite alternate}
+@keyframes breathe{from{opacity:.65;transform:scale(1)}to{opacity:1;transform:scale(1.07)}}
+.spot{position:fixed;left:0;top:0;width:560px;height:560px;margin:-280px 0 0 -280px;border-radius:50%;pointer-events:none;z-index:0;
+  background:radial-gradient(circle,rgba(var(--red),.17),transparent 65%);transform:translate(50vw,50vh);will-change:transform}
+@media(hover:none){.spot{display:none}}
+@media(prefers-reduced-motion:reduce){
+  *,*::before{animation:none!important;transition:none!important}
+  .reveal{opacity:1!important;transform:none!important}
+  .spot{display:none}
+}
 </style>
 </head>
 <body data-view="home">
 <div class="page">
+  <div class="spot" id="spot" aria-hidden="true"></div>
 
   <div class="top">
     <a href="#home" class="homelink"><span class="nm">Abdelrahman Emam</span><span class="bk">← Home</span></a>
@@ -130,7 +183,7 @@ a.tile:hover,.pcard:hover{box-shadow:0 0 90px -12px rgba(var(--red),calc(var(--g
   </div>
 
   <div class="name-wrap" aria-hidden="false">
-    <h1 class="name">Abdelrahman Emam</h1>
+    <h1 class="name" aria-label="Abdelrahman Emam">Abdelrahman Emam</h1>
     <div class="name ghost" aria-hidden="true">Abdelrahman Emam</div>
   </div>
 
@@ -257,6 +310,31 @@ function reveal(){
 addEventListener("scroll",reveal,{passive:true});
 addEventListener("hashchange",reveal);
 reveal();
+
+/* ---- motion helpers ---- */
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// split the big name into letters
+document.querySelectorAll(".name").forEach(el=>{
+  const t=el.textContent; el.textContent="";
+  [...t].forEach((c,i)=>{const sp=document.createElement("span");sp.className="ch"+(c===" "?" sp":"");sp.style.setProperty("--c",i);sp.textContent=c===" "?"\u00A0":c;sp.setAttribute("aria-hidden","true");el.appendChild(sp);});
+});
+// scroll reveal
+if(!reduced && "IntersectionObserver" in window){
+  const io=new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);
+      setTimeout(()=>{e.target.style.transitionDelay="";},1400);}
+  }),{threshold:.12});
+  document.querySelectorAll(".pcard,.job,.exp-title,.chips,.pmore,.clist a").forEach((el,i)=>{
+    el.classList.add("reveal"); el.style.transitionDelay=((i%2)*110)+"ms"; io.observe(el);
+  });
+}
+// mouse spotlight
+const spot=document.getElementById("spot");
+if(!reduced && matchMedia("(hover:hover)").matches){
+  let tx=innerWidth/2,ty=innerHeight/2,x=tx,y=ty;
+  addEventListener("mousemove",e=>{tx=e.clientX;ty=e.clientY;},{passive:true});
+  (function loop(){x+=(tx-x)*.08;y+=(ty-y)*.08;spot.style.transform="translate("+x+"px,"+y+"px)";requestAnimationFrame(loop);})();
+}
 </script>
 </body>
 </html>
